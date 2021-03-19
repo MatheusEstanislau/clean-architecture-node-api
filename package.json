@@ -16,7 +16,7 @@
   "lint-staged": {
     "src/**/*": [
       "yarn lint --fix",
-      "test:staged"
+      "yarn test:staged"
     ]
   },
   "keywords": [],
