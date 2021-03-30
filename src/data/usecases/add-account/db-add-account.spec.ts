@@ -1,34 +1,55 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { DbAddAcount } from './db-add-account'
-import { Encrypter } from './db-add-account-protocols'
+import { Encrypter } from '../../protocols/encrypter'
+import { AccountModel } from '../../../domain/models/account'
+import { AddAccountModel } from '../../../domain/usecases/add-account'
+import { AddAccountRepository } from '../../protocols/add-account-repository'
 
 const makeEncrypter = () => {
   class EncrypterStub implements Encrypter {
     async encrypt(value: string): Promise<string> {
-      return new Promise<string>(resolve => resolve(value))
+      return new Promise<string>(resolve => resolve('hashed_password'))
     }
   }
   return new EncrypterStub()
 }
-makeEncrypter()
+
+const makeAddAccountRepository = () => {
+  class AddAccountRepositoryStub implements AddAccountRepository {
+    async add(accountData: AddAccountModel): Promise<AccountModel> {
+      const fakeAccount = {
+        id: 'valid_id',
+        name: 'valid_name',
+        email: 'valid@email.com',
+        password: 'hashed_password',
+      }
+      return new Promise(resolve => resolve(fakeAccount))
+    }
+  }
+  return new AddAccountRepositoryStub()
+}
+
 const makeSut = () => {
   const encrypterStub = makeEncrypter()
-  const sut = new DbAddAcount(encrypterStub)
+  const addAccountRepositoryStub = makeAddAccountRepository()
+  const sut = new DbAddAcount(encrypterStub, addAccountRepositoryStub)
   return {
     sut,
     encrypterStub,
+    addAccountRepositoryStub,
   }
 }
 describe('DbAddAcount UseCase', () => {
-  test('Should call Encripter with correct password', async () => {
+  test('Should call Encrypter with correct password', async () => {
     const { sut, encrypterStub } = makeSut()
-    const encriptSpy = jest.spyOn(encrypterStub, 'encrypt')
+    const encryptSpy = jest.spyOn(encrypterStub, 'encrypt')
     const accountData = {
       name: 'valid_name',
       email: 'valid@email.com',
       password: 'valid_password',
     }
     await sut.add(accountData)
-    expect(encriptSpy).toHaveBeenLastCalledWith('valid_password')
+    expect(encryptSpy).toHaveBeenLastCalledWith('valid_password')
   })
 
   test('Should throw if Encripter throws', async () => {
@@ -45,5 +66,20 @@ describe('DbAddAcount UseCase', () => {
     }
     const promise = sut.add(accountData)
     await expect(promise).rejects.toThrow()
+  })
+  test('Should call AddAccountRepository with correct values', async () => {
+    const { sut, addAccountRepositoryStub } = makeSut()
+    const addSpy = jest.spyOn(addAccountRepositoryStub, 'add')
+    const accountData = {
+      name: 'valid_name',
+      email: 'valid@email.com',
+      password: 'valid_password',
+    }
+    await sut.add(accountData)
+    expect(addSpy).toHaveBeenCalledWith({
+      name: 'valid_name',
+      email: 'valid@email.com',
+      password: 'hashed_password',
+    })
   })
 })
